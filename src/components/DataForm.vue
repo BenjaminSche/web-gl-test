@@ -15,7 +15,7 @@ export default {
     return {
       nbNodes: 10,
       nbLinks: 20,
-      nbCircles: 0
+      nbCircles: 20
     }
   },
   mounted() {
@@ -25,6 +25,7 @@ export default {
     generate() {
       let steps = []
       let links = []
+      let units = []
       for (let i = 0; i < this.nbNodes; i++) {
         steps.push({
           id: i
@@ -40,9 +41,18 @@ export default {
         })
       }
 
+      for (let i = 0; i < this.nbCircles; i++) {
+        units.push({
+          id: i,
+          linkId: links[this.getRandomNumber(0, links.length - 1)].id,
+          progress: Math.random()
+        })
+      }
+      console.log('emit')
       Bus.$emit('datas-generated', {
         steps: steps,
-        links: links
+        links: links,
+        units: units
       })
     },
     getRandomNumber(min, max) {

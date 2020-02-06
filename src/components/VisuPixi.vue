@@ -4,6 +4,9 @@
 
 <script>
 import * as PIXI from 'pixi.js-legacy'
+import { gsap } from 'gsap'
+import { PixiPlugin } from 'gsap/PixiPlugin'
+import { MotionPathPlugin } from 'gsap/MotionPathPlugin'
 import Bus from '@/event/Bus'
 import dagre from 'dagre'
 import { Viewport } from 'pixi-viewport'
@@ -41,9 +44,15 @@ export default {
           events: [1, 2]
         }
       ],
+      linksLayer: null,
+      linkGraphicById: {},
       dagreGraph: undefined,
       stepTexture: null
     }
+  },
+  created() {
+    gsap.registerPlugin(MotionPathPlugin, PixiPlugin)
+    PixiPlugin.registerPIXI(PIXI)
   },
   mounted() {
     Bus.$on('datas-generated', event => this.onDataReceived(event))
@@ -60,32 +69,50 @@ export default {
   },
   methods: {
     onDataReceived(event) {
-      this.setData(event.steps, event.links)
+      this.setData(event.steps, event.links, event.units)
       this.draw()
     },
     onPlay() {
       const circleLayer = new PIXI.Container()
       this.viewport.addChild(circleLayer)
 
-      const circle = new PIXI.Sprite(this.unitTexture)
+      for (let unit of this.units) {
+        const link = this.linkGraphicById[unit.linkId]
+        if (!link) {
+          continue
+        }
 
-      circle.x = SCREEN_WIDTH / 2
-      circle.y = SCREEN_HEIGHT / 2
-      circleLayer.addChild(circle)
+        let points = link.geometry.graphicsData[0].shape.points
+        points = this.flatPointsToCoordinates(points)
 
-      // for (let unit of this.units) {
-      //   const circle = new PIXI.Sprite(this.circleTexture)
-      //   console.log('unit', unit)
-      //   // circle.position.set(20, 20)
-      //   circle.x = 20
-      //   circle.y = 20
-      //   circleLayer.addChild(circle)
-      // }
+        const circle = new PIXI.Sprite(this.unitTexture)
+        circle.anchor.set(0.5)
+
+        circle.position.set(points[0].x, points[0].y)
+
+        circleLayer.addChild(circle)
+        gsap.to(circle, {
+          duration: 5,
+          repeat: -1, //infinite
+          yoyo: true,
+          delay: unit.progress,
+          motionPath: {
+            path: points,
+            align: 'self'
+          }
+        })
+      }
+
+      console.log('will render')
+
       this.app.render()
+
+      console.log('render done')
     },
-    setData(steps, links) {
+    setData(steps, links, units) {
       this.steps = []
       this.paths = []
+      this.units = units
       this.computeGraph(steps, links)
 
       this.dagreGraph.nodes().forEach(nodeId => {
@@ -96,7 +123,6 @@ export default {
           y: node.y - NODE_HEIGHT / 2
         })
       })
-      console.log('nodes', this.dagreGraph.nodes().length)
 
       this.dagreGraph.edges().forEach(edgeId => {
         let edge = this.dagreGraph.edge(edgeId)
@@ -107,7 +133,6 @@ export default {
           points: edge.points
         })
       })
-      console.log('edges', this.dagreGraph.edges().length)
     },
     init() {
       this.app = new PIXI.Application({
@@ -115,7 +140,7 @@ export default {
         height: 800,
         resolution: RESOLUTION,
         antialias: true,
-        autoStart: false
+        autoStart: true
       })
       this.$refs.visuPixi.appendChild(this.app.view)
 
@@ -163,9 +188,9 @@ export default {
       this.removeAll()
 
       const nodesLayer = new PIXI.Container()
-      const linksLayer = new PIXI.Container()
+      this.linksLayer = new PIXI.Container()
       this.viewport.addChild(nodesLayer)
-      this.viewport.addChild(linksLayer)
+      this.viewport.addChild(this.linksLayer)
 
       // const circleGraphics = new PIXI.Graphics()
       // circleGraphics.beginFill(TEXTURE_COLOR)
@@ -191,9 +216,11 @@ export default {
         nodesLayer.addChild(rectGraphics)
       }
 
+      this.linkGraphicById = {}
       for (let path of this.paths) {
         const curveGraphics = this.createCurveFromPoints(path.points)
-        linksLayer.addChild(curveGraphics)
+        this.linksLayer.addChild(curveGraphics)
+        this.linkGraphicById[path.id] = curveGraphics
         // for (let point of path.points) {
         //   const circleGraphics = new PIXI.Graphics()
         //   circleGraphics.beginFill(0xff00ff)
@@ -206,7 +233,7 @@ export default {
     },
     createCurveFromPoints(points) {
       const curveGraphics = new PIXI.Graphics()
-      curveGraphics.lineStyle(1, 0xffffff)
+      curveGraphics.lineStyle(3, 0xffffff)
 
       // move to the first point
       curveGraphics.moveTo(points[0].x, points[0].y)
@@ -257,6 +284,16 @@ export default {
       while (this.viewport.children[0]) {
         this.viewport.removeChild(this.viewport.children[0])
       }
+    },
+    flatPointsToCoordinates(points) {
+      let coordinates = []
+      for (let i = 0; i < points.length - 1; i += 2) {
+        coordinates.push({
+          x: points[i],
+          y: points[i + 1]
+        })
+      }
+      return coordinates
     }
   }
 }
