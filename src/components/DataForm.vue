@@ -23,9 +23,18 @@ export default {
   },
   methods: {
     generate() {
+      // let steps = [{ id: 1 }, { id: 0 }, { id: 2 }]
+      // let links = [
+      //   { id: '0|1', from: 0, to: 1 },
+      //   { id: '1|0', from: 1, to: 0 },
+      //   { id: '0|2', from: 0, to: 2 }
+      // ]
+      // let units = [{ linkId: '0|1' }, { linkId: '1|0' }]
+
       let steps = []
       let links = []
       let units = []
+
       for (let i = 0; i < this.nbNodes; i++) {
         steps.push({
           id: i
@@ -42,10 +51,11 @@ export default {
       }
 
       for (let i = 0; i < this.nbCircles; i++) {
+        let linkId = links[this.getRandomNumber(0, links.length - 1)].id
         units.push({
           id: i,
-          linkId: links[this.getRandomNumber(0, links.length - 1)].id,
-          progress: Math.random()
+          linkId: linkId,
+          progress: this.getRandomNumber(0, 5)
         })
       }
       console.log('emit')

@@ -85,22 +85,43 @@ export default {
         let points = link.geometry.graphicsData[0].shape.points
         points = this.flatPointsToCoordinates(points)
 
+        const container = new PIXI.Container()
+
         const circle = new PIXI.Sprite(this.unitTexture)
         circle.anchor.set(0.5)
 
-        circle.position.set(points[0].x, points[0].y)
+        // circle.position.set(points[0].x, points[0].y)
 
-        circleLayer.addChild(circle)
-        gsap.to(circle, {
+        // const circleText = new PIXI.Text(unit.id, {
+        //   fontFamily: 'Arial',
+        //   fontSize: 24,
+        //   fill: 'white',
+        //   align: 'right'
+        // })
+
+        // circleText.anchor.set(0.5)
+
+        container.position.set(points[0].x, points[0].y)
+
+        container.addChild(circle)
+        // container.addChild(circleText)
+
+        circleLayer.addChild(container)
+        gsap.to(container, {
           duration: 5,
           repeat: -1, //infinite
           yoyo: true,
           delay: unit.progress,
           motionPath: {
             path: points,
-            align: 'self'
+            align: 'self',
+            resolution: 0
           }
         })
+
+        console.log('=====================')
+        console.log('linkId', unit.linkId)
+        console.log('points', points)
       }
 
       console.log('will render')
@@ -288,6 +309,9 @@ export default {
     flatPointsToCoordinates(points) {
       let coordinates = []
       for (let i = 0; i < points.length - 1; i += 2) {
+        if (i % 3 != 0) {
+          continue
+        }
         coordinates.push({
           x: points[i],
           y: points[i + 1]
